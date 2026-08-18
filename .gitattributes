@@ -1,0 +1,4 @@
+# Wrapper scripts: mvn21 must stay LF to run under sh/bash; mvn21.cmd uses CRLF.
+# These override core.autocrlf for these paths so a Windows checkout can't break the sh wrapper.
+mvn21 text eol=lf
+mvn21.cmd text eol=crlf

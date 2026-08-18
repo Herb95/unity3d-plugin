@@ -6,4 +6,6 @@ work
 .classpath
 .settings/org.eclipse.jdt.core.prefs
 src/test/resources/**/workspace/Library/
+# machine-local JDK path read by the mvn21 wrapper scripts
+.mvn/java-home
 

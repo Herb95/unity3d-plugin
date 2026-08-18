@@ -1,10 +1,18 @@
 <div>
     <p>
-    The platform independent Unity3d installation path. This path will be suffixed by "Editor/Unity.exe" on Windows and
-    "Contents/MacOS/Unity" on Mac by the plugin.
+    The platform independent Unity or Tuanjie Editor installation path. The plugin automatically detects the editor
+    executable below this directory. It looks for <code>Editor/Unity.exe</code> or
+    <code>Editor/Tuanjie.exe</code> on Windows, <code>Contents/MacOS/Unity</code> or
+    <code>Contents/MacOS/Tuanjie</code> on Mac, and the corresponding executable below
+    <code>Editor</code> on Linux.
     </p>
     <p>
-    This field is <em>optional</em> on the jenkins master if you do not intend to build with unity3d on the master.
+    When the editor was installed by Unity Hub or Tuanjie Hub, select the root directory of the specific editor
+    version, not the Hub application itself. This plugin launches an already installed editor; it does not discover
+    versions from Hub or install editors and modules.
+    </p>
+    <p>
+    This field is <em>optional</em> on the Jenkins controller if you do not intend to build on the controller.
     Do not forget to configure the location of the installations on your nodes as needed.
     </p>
 

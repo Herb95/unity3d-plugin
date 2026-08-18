@@ -39,6 +39,17 @@ public class Unity3dInstallation extends ToolInstallation
 
     private static final Logger log = Logger.getLogger(Unity3dInstallation.class.getName());
 
+    enum EditorType {
+        UNITY,
+        TUANJIE
+    }
+
+    enum Platform {
+        WINDOWS,
+        MAC,
+        LINUX
+    }
+
     @DataBoundConstructor
     public Unity3dInstallation(final String name, final String home, final List<? extends ToolProperty<?>> properties) {
         super(name, home, properties);
@@ -75,35 +86,44 @@ public class Unity3dInstallation extends ToolInstallation
         String home;
         String path;
         boolean exists;
+        EditorType editorType;
 
-        Unity3dExecutablePath(String home, String path, boolean exists) {
+        Unity3dExecutablePath(String home, String path, boolean exists, EditorType editorType) {
             this.home = home;
             this.path = path;
             this.exists = exists;
+            this.editorType = editorType;
         }
+
+        // Detection priority. TUANJIE is probed before UNITY because a Tuanjie installation also
+        // ships a Unity.exe copy for command-line compatibility, so the presence of Tuanjie.exe is
+        // the only reliable indicator of a Tuanjie editor: probing for Unity.exe first would
+        // misdetect every Tuanjie installation as Unity.
+        private static final EditorType[] DETECTION_ORDER = {EditorType.TUANJIE, EditorType.UNITY};
 
         static Unity3dExecutablePath check(String home) {
             File value = new File(home);
-            File unityExe = getExeFile(value);
-            log.fine("home " + home + " value " + value + " exe " + unityExe + " path abs " + unityExe.getAbsolutePath()
-                    + " path " + unityExe.getPath());
-            String path = unityExe.getPath(); // getAbsolutePath
-            boolean exists = value.isDirectory() && unityExe.exists();
-            return new Unity3dExecutablePath(home, path, exists);
+            Platform platform = getPlatform();
+
+            for (EditorType editorType : DETECTION_ORDER) {
+                File editorExecutable = getExeFile(value, editorType, platform);
+                log.fine("home " + home + " value " + value + " exe " + editorExecutable + " path abs "
+                        + editorExecutable.getAbsolutePath() + " path " + editorExecutable.getPath());
+                if (value.isDirectory() && editorExecutable.exists()) {
+                    return new Unity3dExecutablePath(home, editorExecutable.getPath(), true, editorType);
+                }
+            }
+
+            File defaultExecutable = getExeFile(value, EditorType.UNITY, platform);
+            return new Unity3dExecutablePath(home, defaultExecutable.getPath(), false, EditorType.UNITY);
         }
 
         boolean isVariableExpanded() {
             return !home.contains("$");
         }
 
-        private static File getExeFile(File unityHome) {
-            if (Functions.isWindows()) {
-                return new File(unityHome, "Editor/Unity.exe");
-            } else if (Functions2.isMac()) {
-                return new File(unityHome, "Contents/MacOS/Unity");
-            } else { // Linux assumed
-                return new File(unityHome, "Editor/Unity");
-            }
+        private static File getExeFile(File editorHome, EditorType editorType, Platform platform) {
+            return new File(editorHome, getExecutableRelativePath(editorType, platform));
         }
 
         public String getInvalidInstallMessage() {
@@ -112,6 +132,27 @@ public class Unity3dInstallation extends ToolInstallation
 
         public String getParametrizedInstallMessage() {
             return Messages.Unity3d_UnityHomeNotFullyExpanded(path);
+        }
+    }
+
+    static Platform getPlatform() {
+        if (Functions.isWindows()) {
+            return Platform.WINDOWS;
+        } else if (Functions2.isMac()) {
+            return Platform.MAC;
+        } else {
+            return Platform.LINUX;
+        }
+    }
+
+    static String getExecutableRelativePath(EditorType editorType, Platform platform) {
+        String executableName = editorType == EditorType.TUANJIE ? "Tuanjie" : "Unity";
+        if (platform == Platform.WINDOWS) {
+            return "Editor/" + executableName + ".exe";
+        } else if (platform == Platform.MAC) {
+            return "Contents/MacOS/" + executableName;
+        } else {
+            return "Editor/" + executableName;
         }
     }
 
@@ -164,7 +205,11 @@ public class Unity3dInstallation extends ToolInstallation
     private File getEditorLogFile(String customLogFile) {
         if (customLogFile != null) return new File(customLogFile);
 
-        if (Functions.isWindows()) {
+        Platform platform = getPlatform();
+        Unity3dExecutablePath executablePath = Unity3dExecutablePath.check(getHome());
+        EditorType editorType = executablePath.exists ? executablePath.editorType : EditorType.UNITY;
+
+        if (platform == Platform.WINDOWS) {
             String localAppData;
             try {
                 localAppData = Win32Util.getLocalAppData();
@@ -182,13 +227,26 @@ public class Unity3dInstallation extends ToolInstallation
                 }
             }
             File applocaldata = new File(localAppData);
-            return new File(applocaldata, "Unity/Editor/Editor.log");
-        } else if (Functions2.isMac()) {
+            return new File(applocaldata, getEditorLogRelativePath(editorType, platform));
+        } else if (platform == Platform.MAC) {
             File userhome = new File(EnvVars.masterEnvVars.get("HOME"));
-            return new File(userhome, "Library/Logs/Unity/Editor.log");
+            return new File(userhome, getEditorLogRelativePath(editorType, platform));
         } else { // Linux assumed
             File userhome = new File(EnvVars.masterEnvVars.get("HOME"));
-            return new File(userhome, ".config/unity3d/Editor.log");
+            return new File(userhome, getEditorLogRelativePath(editorType, platform));
+        }
+    }
+
+    static String getEditorLogRelativePath(EditorType editorType, Platform platform) {
+        String editorDirectory = editorType == EditorType.TUANJIE ? "Tuanjie" : "Unity";
+        if (platform == Platform.WINDOWS) {
+            return editorDirectory + "/Editor/Editor.log";
+        } else if (platform == Platform.MAC) {
+            return "Library/Logs/" + editorDirectory + "/Editor.log";
+        } else if (editorType == EditorType.TUANJIE) {
+            return ".config/tuanjie/Editor.log";
+        } else {
+            return ".config/unity3d/Editor.log";
         }
     }
 

@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+# Build this plugin with a supported JDK (17-21) instead of the machine default.
+#
+# The build must run Maven itself on JDK 17-21: the parent's license-maven-plugin and
+# spotbugs-maven-plugin cannot read class files newer than Java 21 ("Unsupported class
+# file major version ..."), so a default JAVA_HOME of JDK 22+ makes `mvn verify` fail.
+#
+# JDK resolution order:
+#   1. $UNITY3D_JAVA_HOME, if set
+#   2. the path in .mvn/java-home (git-ignored, machine-local), if present
+#   3. otherwise Maven runs with the existing JAVA_HOME / PATH as-is
+#
+# Usage: ./mvn21 <usual mvn args>   e.g.  ./mvn21 verify
+set -e
+
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if [ -z "$UNITY3D_JAVA_HOME" ] && [ -f "$DIR/.mvn/java-home" ]; then
+  UNITY3D_JAVA_HOME=$(tr -d '\r\n' < "$DIR/.mvn/java-home")
+fi
+
+if [ -n "$UNITY3D_JAVA_HOME" ]; then
+  JAVA_HOME=$UNITY3D_JAVA_HOME
+  export JAVA_HOME
+fi
+
+exec mvn "$@"
