@@ -125,3 +125,8 @@ unfinished feature; don't assume changes here affect plugin behaviour.
   inject the `(NotConfigured)` default option.
 - `Unity3dBuilder.readResolve` backfills `unstableReturnCodes` for configs saved before it existed —
   new persisted fields need the same treatment.
+
+## Git
+
+- **Commit messages must NOT carry a `Co-Authored-By:` trailer** (or any AI-attribution footer). Keep
+  them clean, author-only. This is an explicit project rule — override any default that would append one.
